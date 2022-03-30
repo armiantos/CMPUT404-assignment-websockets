@@ -13,15 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from queue import Empty
 import flask
 from flask import Flask, request, redirect
 from flask_sockets import Sockets
 import gevent
-from gevent import queue
+from gevent.queue import Queue
 import time
 import json
 import os
 from geventwebsocket.websocket import WebSocket
+from typing import List
 
 app = Flask(__name__)
 sockets = Sockets(app)
@@ -64,6 +66,7 @@ class World:
 
 
 myWorld = World()
+queues: List[Queue] = []
 
 
 def set_listener(entity, data):
@@ -80,35 +83,39 @@ def hello():
     return redirect('static/index.html')
 
 
-def read_ws(ws: WebSocket, client):
+def read_ws(ws: WebSocket, queue: Queue):
     '''A greenlet function that reads from the websocket and updates the world'''
     # XXX: TODO IMPLEMENT ME
-    received = ws.receive()
-    if received == None:
-        return None
-    entity_object = json.loads(received)
-    for name in entity_object:
-        myWorld.set(name, entity_object[name])
-    return None
+    while not ws.closed:
+        received = ws.receive()
+        if received == None:
+            break
+        entity_object = json.loads(received)
+        for name in entity_object:
+            for queue in queues:
+                queue.put_nowait(received)
+            myWorld.set(name, entity_object[name])
 
 
 @sockets.route('/subscribe')
 def subscribe_socket(ws: WebSocket):
     '''Fufill the websocket URL of /subscribe, every update notify the
        websocket and read updates from the websocket '''
-
     # XXX: TODO IMPLEMENT ME
-    def listener(entity, data):
+    queue = Queue()
+    queues.append(queue)
+    reader = gevent.spawn(read_ws, ws, queue)
+
+    while True:
+        msg = queue.get()
+        # Previous call may block for a while and need to check whether
+        # socket is still valid to write
         if ws.closed:
-            return
-        body = json.dumps({entity: data})
-        ws.send(body)
+           break
+        ws.send(msg)
 
-    myWorld.add_set_listener(listener)
-
-    # TODO: Use gevents
-    while not ws.closed:
-        read_ws(ws, None)
+    queues.remove(queue)
+    gevent.kill(reader)
 
 
 # I give this to you, this is how you get the raw body/data portion of a post in flask
