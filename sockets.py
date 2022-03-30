@@ -21,6 +21,7 @@ from gevent import queue
 import time
 import json
 import os
+from geventwebsocket.websocket import WebSocket
 
 app = Flask(__name__)
 sockets = Sockets(app)
@@ -79,11 +80,18 @@ def read_ws(ws,client):
     return None
 
 @sockets.route('/subscribe')
-def subscribe_socket(ws):
+def subscribe_socket(ws: WebSocket):
     '''Fufill the websocket URL of /subscribe, every update notify the
        websocket and read updates from the websocket '''
     # XXX: TODO IMPLEMENT ME
-    return None
+    def listener(entity, data):
+        ws.send(json.dumps({'entity': entity, 'data': data}))
+    myWorld.add_set_listener(listener)
+
+    # https://github.com/heroku-python/flask-sockets/issues/60
+    while not ws.closed:
+        gevent.sleep(10)
+
 
 
 # I give this to you, this is how you get the raw body/data portion of a post in flask
