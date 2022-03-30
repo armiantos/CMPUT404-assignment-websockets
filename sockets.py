@@ -64,7 +64,6 @@ myWorld = World()
 
 def set_listener( entity, data ):
     ''' do something with the update ! '''
-    # TODO
     pass
 
 myWorld.add_set_listener( set_listener )
@@ -74,9 +73,12 @@ def hello():
     '''Return something coherent here.. perhaps redirect to /static/index.html '''
     return redirect('static/index.html')
 
-def read_ws(ws,client):
+def read_ws(ws: WebSocket, client):
     '''A greenlet function that reads from the websocket and updates the world'''
     # XXX: TODO IMPLEMENT ME
+    entity_object = json.loads(ws.receive())
+    for name in entity_object:
+        myWorld.set(name, entity_object[name])
     return None
 
 @sockets.route('/subscribe')
@@ -85,12 +87,15 @@ def subscribe_socket(ws: WebSocket):
        websocket and read updates from the websocket '''
     # XXX: TODO IMPLEMENT ME
     def listener(entity, data):
-        ws.send(json.dumps({entity: data}))
+        if ws.closed:
+            return
+        body = json.dumps({entity: data})
+        ws.send(body)
     myWorld.add_set_listener(listener)
 
-    # https://github.com/heroku-python/flask-sockets/issues/60
+    # TODO: Use gevents
     while not ws.closed:
-        gevent.sleep(10)
+        read_ws(ws, None)
 
 
 

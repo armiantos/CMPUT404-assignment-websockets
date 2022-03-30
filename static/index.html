@@ -125,14 +125,9 @@ function addEntity(entity, data) {
     world[entity] = data;
     drawNextFrame(); // (but should we?)
     //XXX: Send a XHTML Request that updates the entity you just modified!
-    const update_endpoint = `/entity/${entity}`
-    fetch(update_endpoint, {
-        method: 'PUT',
-        headers: {
-            'ContentType': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
+    body = {}
+    body[entity] = data
+    socket.send(JSON.stringify(body))
 }
 var counter = 0;
 function addEntityWithoutName(data) {
