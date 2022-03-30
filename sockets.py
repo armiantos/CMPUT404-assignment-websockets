@@ -76,7 +76,10 @@ def hello():
 def read_ws(ws: WebSocket, client):
     '''A greenlet function that reads from the websocket and updates the world'''
     # XXX: TODO IMPLEMENT ME
-    entity_object = json.loads(ws.receive())
+    received = ws.receive()
+    if received == None:
+        return None
+    entity_object = json.loads(received)
     for name in entity_object:
         myWorld.set(name, entity_object[name])
     return None
