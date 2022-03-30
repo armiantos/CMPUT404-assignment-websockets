@@ -85,7 +85,7 @@ def subscribe_socket(ws: WebSocket):
        websocket and read updates from the websocket '''
     # XXX: TODO IMPLEMENT ME
     def listener(entity, data):
-        ws.send(json.dumps({'entity': entity, 'data': data}))
+        ws.send(json.dumps({entity: data}))
     myWorld.add_set_listener(listener)
 
     # https://github.com/heroku-python/flask-sockets/issues/60

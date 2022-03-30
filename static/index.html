@@ -273,8 +273,10 @@ function wsSetup() {
     socket.onmessage = function(msg) {  
         try {
             //XXX: TODO What are you going to do here?    
-            const {entity, data} = JSON.parse(msg.data);
-            world[entity] = data;
+            const entityObject = JSON.parse(msg.data);
+            for (const name in entityObject) {
+                world[name] = entityObject[name]
+            }
             drawNextFrame();
         } catch (e) {
             alert("socket on message: " + e);
