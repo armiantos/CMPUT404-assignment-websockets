@@ -25,43 +25,44 @@
             var wscounter = 0;
             var socket;
 
+            const pokemonToImageSourceMap = {
+                bulbasaur: "/static/Spr_1b_001.webp",
+                charmander: "/static/Spr_1b_004.webp",
+                squirtle: "/static/Spr_1b_007.webp",
+                pikachu: "/static/Spr_1b_025.webp",
+            };
+            let pokemonImages = [];
+            for (let pokemon in pokemonToImageSourceMap) {
+                const pokemonImage = new Image();
+                pokemonImage.src = pokemonToImageSourceMap[pokemon];
+                pokemonImages.push(pokemonImage);
+            }
+
             function debug(str) {
                 var debugDiv = document.getElementById("debug");
                 debugDiv.innerHTML = "" + str;
             }
             debug("Test");
 
+            let currentPokemon = {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+                imageIndex: 0,
+            };
             world = {};
 
             //XXX: TODO Make this prettier!
-            function drawCircle(context, entity) {
-                with (context) {
-                    beginPath();
-                    lineWidth = 3;
-                    var x = entity["x"];
-                    var y = entity["y"];
-                    //moveTo(x,y);
-                    fillStyle = entity["colour"];
-                    strokeStyle = fillStyle;
-                    arc(x, y, entity["radius"] ? entity["radius"] : 50, 0, 2.0 * Math.PI, false);
-                    stroke();
-                }
-            }
-
-            function prepEntity(entity) {
-                if (!entity["colour"]) {
-                    entity["colour"] = "#FF0000";
-                }
-                if (!entity["radius"]) {
-                    entity["radius"] = 50;
-                }
-                return entity;
+            function drawPokemon(pokemon) {
+                // https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
+                context.drawImage(pokemonImages[pokemon.imageIndex], pokemon.x, pokemon.y, pokemon.width, pokemon.height);
             }
 
             function clearFrame() {
                 with (context) {
                     moveTo(0, 0);
-                    fillStyle = "#000";
+                    fillStyle = "#fff";
                     fillRect(0, 0, W, H);
                 }
             }
@@ -71,8 +72,9 @@
                 clearFrame();
                 for (var key in world) {
                     var entity = world[key];
-                    drawCircle(context, prepEntity(entity));
+                    drawPokemon(entity);
                 }
+                drawPokemon(currentPokemon);
             }
 
             var drawNext = true;
@@ -222,15 +224,25 @@
             // Add the application specific mouse listeners!
             //XXX: TODO Make these prettier!
             mouse.mousedowners.push(function (x, y, clicked, e) {
-                addEntityWithoutName({ x: x, y: y, colour: "blue" });
+                const index = Math.floor(Math.random() * 4);
+                currentPokemon.imageIndex = index;
+                currentPokemon.x = x;
+                currentPokemon.y = y;
+                currentPokemon.width = 0;
+                currentPokemon.height = 0;
             });
 
             mouse.mouseuppers.push(function (x, y, clicked, e) {
-                addEntityWithoutName({ x: x, y: y, colour: "red" });
+                addEntityWithoutName(currentPokemon);
             });
 
             mouse.mousedraggers.push(function (x, y, clicked, e) {
-                addEntityWithoutName({ x: x, y: y, colour: "green", radius: 10 });
+                const width = x - currentPokemon.x;
+                const height = y - currentPokemon.y;
+                const size = Math.max(width, height);
+                currentPokemon.width = size;
+                currentPokemon.height = size;
+                drawNextFrame();
             });
 
             function update() {
@@ -242,6 +254,7 @@
                 socket = new WebSocket(url);
                 socket.onopen = function () {
                     //XXX: TODO What are you going to do here?
+                    // Fetch the current state of the world
                     endpoint = "/world";
                     fetch(endpoint)
                         .then((resp) => resp.json())
@@ -253,11 +266,14 @@
                 socket.onmessage = function (msg) {
                     try {
                         //XXX: TODO What are you going to do here?
+                        // Update entities in our world
                         const entityObject = JSON.parse(msg.data);
                         for (const name in entityObject) {
                             world[name] = entityObject[name];
                         }
                         drawNextFrame();
+                        // Mimic a global counter
+                        counter = Object.keys(world).length;
                     } catch (e) {
                         alert("socket on message: " + e);
                     }
